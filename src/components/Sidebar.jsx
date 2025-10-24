@@ -13,9 +13,10 @@ export function Sidebar({
   onSubmitAddContact,
   searchTerm,
   onSearchTermChange,
+  showSidebar,
 }) {
   return (
-    <aside className="contacts-sidebar liquid-glass">
+    <aside className={`contacts-sidebar liquid-glass ${showSidebar ? 'sidebar-visible' : ''}`}>
       <div className="user-profile">
         <img src={user.avatar} alt="Profile" className="profile-pic" />
         <div className="user-info">

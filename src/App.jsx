@@ -33,6 +33,7 @@ export default function App() {
   const [messagesByContactId, setMessagesByContactId] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showSidebar, setShowSidebar] = useState(false);
 
   const currentContact = useMemo(
     () => contacts.find(c => c.id === currentContactId) || null,
@@ -111,9 +112,10 @@ export default function App() {
     <div className="app-root">
       <FloatingBackground />
       <div className="chat-app liquid-glass">
-        <Header />
+        <Header onToggleSidebar={() => setShowSidebar(prev => !prev)} />
         <div className="app-body">
           <Sidebar
+            showSidebar={showSidebar}
             user={{
               name: 'Alex Johnson',
               status: 'Online',

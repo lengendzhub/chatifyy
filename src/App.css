@@ -530,10 +530,33 @@ body {
 .welcome-message { text-align: center; padding: 20px; color: var(--light-text); font-style: italic; }
 .email-indicator { font-size: 10px; background: rgba(255, 255, 255, 0.2); padding: 2px 6px; border-radius: 10px; margin-left: 5px; }
 
+.menu-toggle {
+  display: none; /* Hidden by default */
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-size: 24px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
 
 @media (max-width: 768px) {
+  .menu-toggle {
+    display: block;
+  }
   .chat-app { width: 100%; height: 100vh; border-radius: 0; }
-  .contacts-sidebar { width: 80px; }
+  .app-body { flex-direction: column; }
+  .contacts-sidebar { 
+    width: 100%; 
+    height: 100%; 
+    position: absolute;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 10;
+  }
+  .contacts-sidebar.sidebar-visible { transform: translateX(0); }
+  .chat-area { width: 100%; }
   .user-info, .contact-info, .search-contacts input, .app-name { display: none; }
   .user-profile, .contact-item { justify-content: center; }
   .profile-pic, .contact-pic { margin-right: 0; }
@@ -544,3 +567,5 @@ body {
 }
 
 .transparent-chat-icon img { max-width: 220px; opacity: 1; }
+
+button:hover { transform: translateY(-2px); transition: all 0.3s ease; }
