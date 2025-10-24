@@ -1,9 +1,11 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { Header } from './components/Header.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
 import { ChatArea } from './components/ChatArea.jsx';
 import { FloatingBackground } from './components/FloatingBackground.jsx';
+import { LoginPage } from './components/LoginPage.jsx';
 
 function getRandomAvatar() {
   const avatars = [
@@ -34,6 +36,109 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSidebar, setShowSidebar] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentBgImage, setCurrentBgImage] = useState(0);
+  const previousBgImageRef = useRef(null);
+
+  const backgroundImages = ['/chat1.jpg', '/chat2.jpg', '/chat3.jpg', '/chat4.jpg'];
+  const mobileBackgroundImages = ['/mobile.jpg'];
+
+  const isMobile = window.innerWidth <= 768;
+
+  // Background cycling
+  useEffect(() => {
+    const interval = setInterval(() => {
+      previousBgImageRef.current = currentBgImage;
+      if (isMobile) {
+        setCurrentBgImage(prev => (prev + 1) % mobileBackgroundImages.length);
+      } else {
+        setCurrentBgImage(prev => (prev + 1) % backgroundImages.length);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isMobile, currentBgImage]);
+
+  // Smooth fade transition between background images
+  useEffect(() => {
+    const body = document.body;
+    const images = isMobile ? mobileBackgroundImages : backgroundImages;
+
+    let container = document.getElementById('bg-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'bg-container';
+      container.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: -2;
+      `;
+      body.appendChild(container);
+    }
+
+    // Create two layers if not present
+    let layerA = document.getElementById('bg-layer-a');
+    let layerB = document.getElementById('bg-layer-b');
+
+    if (!layerA) {
+      layerA = document.createElement('div');
+      layerA.id = 'bg-layer-a';
+      container.appendChild(layerA);
+    }
+    if (!layerB) {
+      layerB = document.createElement('div');
+      layerB.id = 'bg-layer-b';
+      container.appendChild(layerB);
+    }
+
+    const baseStyle = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      transition: opacity 2.5s ease-in-out, transform 6s ease-in-out;
+      will-change: opacity, transform;
+    `;
+
+    layerA.style.cssText = baseStyle;
+    layerB.style.cssText = baseStyle;
+
+    const nextImg = images[currentBgImage];
+    const prevImg = previousBgImageRef.current !== null ? images[previousBgImageRef.current] : null;
+
+    if (currentBgImage % 2 === 0) {
+      layerA.style.backgroundImage = `url('${nextImg}')`;
+      layerA.style.opacity = '0';
+      layerA.style.transform = 'scale(1.05)';
+      layerB.style.opacity = '1';
+      layerB.style.backgroundImage = `url('${prevImg || nextImg}')`;
+
+      requestAnimationFrame(() => {
+        layerA.style.opacity = '1';
+        layerA.style.transform = 'scale(1)';
+        layerB.style.opacity = '0';
+      });
+    } else {
+      layerB.style.backgroundImage = `url('${nextImg}')`;
+      layerB.style.opacity = '0';
+      layerB.style.transform = 'scale(1.05)';
+      layerA.style.opacity = '1';
+      layerA.style.backgroundImage = `url('${prevImg || nextImg}')`;
+
+      requestAnimationFrame(() => {
+        layerB.style.opacity = '1';
+        layerB.style.transform = 'scale(1)';
+        layerA.style.opacity = '0';
+      });
+    }
+  }, [currentBgImage, isMobile]);
 
   const currentContact = useMemo(
     () => contacts.find(c => c.id === currentContactId) || null,
@@ -48,7 +153,8 @@ export default function App() {
 
   const selectContact = useCallback((contactId) => {
     setCurrentContactId(contactId);
-  }, []);
+    if (showSidebar) setShowSidebar(false);
+  }, [showSidebar]);
 
   const addContact = useCallback((name, email, phone) => {
     const newContact = {
@@ -72,14 +178,10 @@ export default function App() {
 
     setMessagesByContactId(prev => {
       const existing = prev[contactId] || [];
-      const updated = [
-        ...existing,
-        { text: trimmed, type: 'sent', time, viaEmail },
-      ];
+      const updated = [...existing, { text: trimmed, type: 'sent', time, viaEmail }];
       return { ...prev, [contactId]: updated };
     });
 
-    // Auto-reply simulation
     setTimeout(() => {
       setMessagesByContactId(prev => {
         const responses = viaEmail
@@ -99,50 +201,65 @@ export default function App() {
         const timestamp = new Date();
         const replyTime = `${timestamp.getHours()}:${timestamp.getMinutes().toString().padStart(2, '0')}`;
         const existing = prev[contactId] || [];
-        const updated = [
-          ...existing,
-          { text: randomResponse, type: 'received', time: replyTime, viaEmail },
-        ];
+        const updated = [...existing, { text: randomResponse, type: 'received', time: replyTime, viaEmail }];
         return { ...prev, [contactId]: updated };
       });
     }, viaEmail ? 1500 : 1000);
   }, [currentContact]);
 
+  const handleLogin = useCallback(() => {
+    setIsLoggedIn(true);
+  }, []);
+
   return (
-    <div className="app-root">
-      <FloatingBackground />
-      <div className="chat-app liquid-glass">
-        <Header onToggleSidebar={() => setShowSidebar(prev => !prev)} />
-        <div className="app-body">
-          <Sidebar
-            showSidebar={showSidebar}
-            user={{
-              name: 'Alex Johnson',
-              status: 'Online',
-              avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-            }}
-            contacts={filteredContacts}
-            allContacts={contacts}
-            selectedContactId={currentContactId}
-            onSelectContact={selectContact}
-            onOpenAddContact={() => setIsModalOpen(true)}
-            isAddContactOpen={isModalOpen}
-            onCloseAddContact={() => setIsModalOpen(false)}
-            onSubmitAddContact={addContact}
-            searchTerm={searchTerm}
-            onSearchTermChange={setSearchTerm}
+    <Router>
+      <div className="app-root">
+        <FloatingBackground />
+        <Routes>
+          <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+          <Route
+            path="/"
+            element={
+              isLoggedIn ? (
+                <div className="chat-app liquid-glass">
+                  <Header onToggleSidebar={() => setShowSidebar(prev => !prev)} />
+                  <div className="app-body">
+                    <Sidebar
+                      showSidebar={showSidebar}
+                      user={{
+                        name: 'Alex Johnson',
+                        status: 'Online',
+                        avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
+                      }}
+                      contacts={filteredContacts}
+                      allContacts={contacts}
+                      selectedContactId={currentContactId}
+                      onSelectContact={selectContact}
+                      onOpenAddContact={() => setIsModalOpen(true)}
+                      isAddContactOpen={isModalOpen}
+                      onCloseAddContact={() => setIsModalOpen(false)}
+                      onSubmitAddContact={addContact}
+                      searchTerm={searchTerm}
+                      onSearchTermChange={setSearchTerm}
+                    />
+                    <ChatArea
+                      contact={currentContact}
+                      messages={currentContact ? (messagesByContactId[currentContact.id] || []) : []}
+                      onSendSMS={(text) => sendMessage(text, { viaEmail: false })}
+                      onSendEmail={(text) => {
+                        console.log('Simulate Email send');
+                        sendMessage(text, { viaEmail: true });
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
           />
-          <ChatArea
-            contact={currentContact}
-            messages={currentContact ? (messagesByContactId[currentContact.id] || []) : []}
-            onSendSMS={(text) => sendMessage(text, { viaEmail: false })}
-            onSendEmail={(text) => {
-              console.log('Simulate Email send');
-              sendMessage(text, { viaEmail: true });
-            }}
-          />
-        </div>
+        </Routes>
       </div>
-    </div>
+    </Router>
   );
 }
